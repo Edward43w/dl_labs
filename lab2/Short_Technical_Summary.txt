@@ -1,30 +1,35 @@
-This project performs binary pet segmentation on Oxford-IIIT Pet using two models: UNet and ResNet34_UNet. Final checkpoints were trained with:
-1) python src/train.py --model unet --seed 42
-2) python src/train.py --model resnet34_unet --seed 3407
+This project performs binary pet segmentation on Oxford-IIIT Pet using UNet and ResNet34_UNet. Final models were trained and inferenced with:
+- python src/train.py --model unet --seed 42
+- python src/train.py --model resnet34_unet --seed 3407
+- python src/inference.py --model unet --test_txt dataset/test_unet.txt --tta_scales 0.9,1.0,1.1
+- python src/inference.py --model resnet34_unet --test_txt dataset/test_res_unet.txt --tta_scales 0.9,1.0,1.1
 
-Training reproducibility:
-- Python 3.10+, install dependencies with pip install -r requirements.txt
-- Dataset root: dataset/oxford-iiit-pet
-- Splits: dataset/train.txt and dataset/val.txt
-- Default setup: batch_size=24, epochs=300, lr=3e-4, AdamW, cosine annealing, early stopping
+Implementation highlights:
+- UNet follows the original design (no BatchNorm, no conv padding, crop-based skip).
+- ResNet34_UNet uses a ResNet34 encoder, U-Net decoder, skip concatenation, and CBAM.
+- Minor adjustments were made in ResNet34_UNet to resolve channel mismatches in the provided diagram while preserving the overall architecture.
 
-Inference reproducibility:
-- UNet: python src/inference.py --model unet --test_txt dataset/test_unet.txt --tta_scales 0.9,1.0,1.1
-- ResNet34_UNet: python src/inference.py --model resnet34_unet --test_txt dataset/test_res_unet.txt --tta_scales 0.9,1.0,1.1
+Data preprocessing: 
+- Images resized to a fixed resolution.
+- UNet uses reflect padding and output center-cropping to handle valid convolutions.
+- Data augmentation includes random scaling and rotation.
 
-Technical notes:
-- Loss uses BCEDiceLoss instead of BCE.
-- Validation uses best_dice_threshold instead of a fixed 0.5 threshold.
-- Added save_validation_predictions for visualization/debugging.
+Training strategy:
+- AdamW optimizer with cosine annealing.
+- Loss: BCEDiceLoss for better overlap learning.
+- Early stopping applied.
+- Best threshold selected via validation search instead of fixed 0.5.
 
-UNet:
-- Implemented to follow the original UNet: no BatchNorm, no convolution padding, and crop-based skip alignment.
-- Because valid convolutions reduce spatial size, I used reflect padding on the input image and center crop on the output to align predictions with masks during training, validation, visualization, and inference.
+Key observations:
+- Proper spatial alignment is critical for UNet performance.
+- Threshold tuning improves Dice score.
+- Test-time augmentation (multi-scale + flip) provides small gains.
 
-ResNet34_UNet:
-- Implemented with a ResNet34-style encoder, U-Net-like decoder, skip concatenation, and CBAM in decoder blocks.
-- The provided paper/diagram has some inconsistencies (especially channel dimensions). Therefore, I made only minor adjustments to resolve channel-matching/runtime issues while preserving the overall architecture design.
+Comparison:
+- UNet is sensitive to geometric handling due to valid convolutions but achieves stable results after alignment fixes.
+- ResNet34_UNet is easier to train and more robust due to deeper encoder features.
+- Overall, ResNet34_UNet shows better generalization, while UNet requires more careful preprocessing.
 
-Hardware: NVIDIA RTX 5090 GPU.
+Hardware: NVIDIA RTX 5090 GPU, Python 3.10.
 
-Declaration: ChatGPT was used to assist code and summary writing, including BCEDiceLoss, best_dice_threshold, center-crop implementation, UNet padding/cropping, validation visualization, and summary drafting.
+Declaration: ChatGPT assisted with parts of implementation (BCEDiceLoss, threshold search, padding/cropping, CBAM, validation visualization) and summary writing.
