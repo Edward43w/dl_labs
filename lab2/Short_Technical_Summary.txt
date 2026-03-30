@@ -1,0 +1,30 @@
+This project performs binary pet segmentation on Oxford-IIIT Pet using two models: UNet and ResNet34_UNet. Final checkpoints were trained with:
+1) python src/train.py --model unet --seed 42
+2) python src/train.py --model resnet34_unet --seed 3407
+
+Training reproducibility:
+- Python 3.10+, install dependencies with pip install -r requirements.txt
+- Dataset root: dataset/oxford-iiit-pet
+- Splits: dataset/train.txt and dataset/val.txt
+- Default setup: batch_size=24, epochs=300, lr=3e-4, AdamW, cosine annealing, early stopping
+
+Inference reproducibility:
+- UNet: python src/inference.py --model unet --test_txt dataset/test_unet.txt --tta_scales 0.9,1.0,1.1
+- ResNet34_UNet: python src/inference.py --model resnet34_unet --test_txt dataset/test_res_unet.txt --tta_scales 0.9,1.0,1.1
+
+Technical notes:
+- Loss uses BCEDiceLoss instead of BCE.
+- Validation uses best_dice_threshold instead of a fixed 0.5 threshold.
+- Added save_validation_predictions for visualization/debugging.
+
+UNet:
+- Implemented to follow the original UNet: no BatchNorm, no convolution padding, and crop-based skip alignment.
+- Because valid convolutions reduce spatial size, I used reflect padding on the input image and center crop on the output to align predictions with masks during training, validation, visualization, and inference.
+
+ResNet34_UNet:
+- Implemented with a ResNet34-style encoder, U-Net-like decoder, skip concatenation, and CBAM in decoder blocks.
+- The provided paper/diagram has some inconsistencies (especially channel dimensions). Therefore, I made only minor adjustments to resolve channel-matching/runtime issues while preserving the overall architecture design.
+
+Hardware: NVIDIA RTX 5090 GPU.
+
+Declaration: ChatGPT was used to assist code and summary writing, including BCEDiceLoss, best_dice_threshold, center-crop implementation, UNet padding/cropping, validation visualization, and summary drafting.
